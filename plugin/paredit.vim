@@ -1180,7 +1180,6 @@ function! PareditSplit()
 
         " First find which kind of paren is the innermost
         let [p, l, c] = s:FindClosing()
-        echoe 'closing is ' . p
         if p !~ s:any_closing_char
             " Not found any kind of parens
             return
