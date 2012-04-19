@@ -54,13 +54,13 @@ let s:skip_sc = 'synIDattr(synID(line("."), col("."), 0), "name") =~ "[Ss]tring\
 
 " Regular expressions to identify special characters combinations used by paredit
 "TODO: add curly brace
-let s:any_matched_char   = '(\|)\|\[\|\]\|\"'
-let s:any_matched_pair   = '()\|\[\]\|\"\"'
-let s:any_opening_char   = '(\|\['
-let s:any_closing_char   = ')\|\]'
-let s:any_openclose_char = '(\|\[\|)\|\]'
-let s:any_wsopen_char    = '\s\|(\|\['
-let s:any_wsclose_char   = '\s\|)\|\]'
+let s:any_matched_char   = '(\|)\|\[\|\]\|\"\|{\|}'
+let s:any_matched_pair   = '()\|\[\]\|\"\"\|{}'
+let s:any_opening_char   = '(\|\[\|{'
+let s:any_closing_char   = ')\|\]\|}'
+let s:any_openclose_char = '(\|\[\|{\|)\|\]\|}'
+let s:any_wsopen_char    = '\s\|(\|\[\|{'
+let s:any_wsclose_char   = '\s\|)\|\]\|}'
 let s:any_macro_prefix   = "'" . '\|`\|#\|@\|\~\|,'
 
 " Repeat count for some remapped edit functions (like 'd')
@@ -88,6 +88,8 @@ function! PareditInitBuffer()
         inoremap <buffer> <expr>   )            PareditInsertClosing('(',')')
         inoremap <buffer> <expr>   [            PareditInsertOpening('[',']')
         inoremap <buffer> <expr>   ]            PareditInsertClosing('[',']')
+        inoremap <buffer> <expr>   {            PareditInsertOpening('{','}')
+        inoremap <buffer> <expr>   }            PareditInsertClosing('{','}')
         inoremap <buffer> <expr>   "            PareditInsertQuotes()
         inoremap <buffer> <expr>   <BS>         PareditBackspace(0)
         inoremap <buffer> <expr>   <Del>        PareditDel()
@@ -115,6 +117,8 @@ function! PareditInitBuffer()
         vnoremap <buffer> <silent> <Leader>w(   :<C-U>call PareditWrapSelection('(',')')<CR>
         nnoremap <buffer> <silent> <Leader>w[   :<C-U>call PareditWrap('[',']')<CR>
         vnoremap <buffer> <silent> <Leader>w[   :<C-U>call PareditWrapSelection('[',']')<CR>
+        nnoremap <buffer> <silent> <Leader>w{   :<C-U>call PareditWrap('{','}')<CR>
+        vnoremap <buffer> <silent> <Leader>w{   :<C-U>call PareditWrapSelection('{','}')<CR>
         nnoremap <buffer> <silent> <Leader>w"   :<C-U>call PareditWrap('"','"')<CR>
         vnoremap <buffer> <silent> <Leader>w"   :<C-U>call PareditWrapSelection('"','"')<CR>
 
@@ -151,6 +155,8 @@ function! PareditInitBuffer()
         silent! iunmap <buffer> )
         silent! iunmap <buffer> [
         silent! iunmap <buffer> ]
+        silent! iunmap <buffer> {
+        silent! iunmap <buffer> }
         silent! iunmap <buffer> "
         silent! iunmap <buffer> <BS>
         silent! iunmap <buffer> <Del>
@@ -379,6 +385,16 @@ function! s:IsBalanced()
         " Number of opening and closing brackets differ
         return 0
     endif
+    let c1 = searchpair( '{', '', '}', 'brnmW', s:skip_sc, matchb )
+    if c1 == 0
+        " Outside of all bracket-pairs
+        return 1
+    endif
+    let c2 = searchpair( '{', '', '}',  'rnmW', s:skip_sc, matchf )
+    if !(c1 == c2) && !(c1 == c2 - 1 && line[c-1] == '{') && !(c1 == c2 + 1 && line[c-1] == '}')
+        " Number of opening and closing brackets differ
+        return 0
+    endif
     return 1
 endfunction
 
@@ -410,7 +426,7 @@ function! s:GetMatchedChars( lines, start_in_string, start_in_comment )
             if a:lines[i] == ';'
                 let inside_comment = 1
             endif
-            if a:lines[i] == '(' || a:lines[i] == '[' || a:lines[i] == ')' || a:lines[i] == ']'
+            if a:lines[i] == '(' || a:lines[i] == '[' || a:lines[i] == ')' || a:lines[i] == ']' || a:lines[i] == '{' || a:lines[i] == '}'
                 let matched = strpart( matched, 0, i ) . a:lines[i] . strpart( matched, i+1 )
             endif
         endif
@@ -428,10 +444,12 @@ function! s:Unbalanced( matched )
         let tmp = substitute( tmp, '(\(\s*\))',   ' \1 ', 'g')
         let tmp = substitute( tmp, '\[\(\s*\)\]', ' \1 ', 'g')
         let tmp = substitute( tmp, '"\(\s*\)"',   ' \1 ', 'g')
+        let tmp = substitute( tmp, '{\(\s*\)}',   ' \1 ', 'g')
         if tmp == matched
             " All paired chars eliminated
             let tmp = substitute( tmp, ')\(\s*\)(',   ' \1 ', 'g')
             let tmp = substitute( tmp, '\]\(\s*\)\[', ' \1 ', 'g')
+            let tmp = substitute( tmp, '}\(\s*\){', ' \1 ', 'g')
             if tmp == matched
                 " Also no more inverse pairs can be eliminated
                 break
@@ -1069,7 +1087,7 @@ function! PareditMoveRight()
     endif
 endfunction
 
-" Find closing of the innermost structure: (...) or [...]
+" Find closing of the innermost structure: (...) or [...] or {...}
 " Return a list where first element is the closing character,
 " second and third is its position (line, column)
 function! s:FindClosing()
@@ -1083,15 +1101,60 @@ function! s:FindClosing()
     let lb = line( '.' )
     let cb = col( '.' )
     call setpos( '.', [0, l, c, 0] )
-    if [lp, cp] == [l, c] && [lb, cb] == [l, c]
+    call PareditFindClosing( '{', '}', 0 )
+    let lc = line( '.' )
+    let cc = col( '.' )
+    call setpos( '.', [0, l, c, 0] )
+    "echoe '(): [' . lp . ', ' . cp . '], []: [' . lb . ', ' . cb . '], {}: [' . lc . ', ' . cc . ']'
+    if [lp, cp] == [l, c] && [lb, cb] == [l, c] && [lc, cc] == [l, c]
         " Not found any kind of paren
         return ['', 0, 0]
-    elseif [lb, cb] == [l, c] || lp < lb || (lp == lb && cp < cb)
+    endif
+    "TODO: this is a decision tree to program, but when it's done it'll know
+    "which one is the correct choice. I probably need to be clever about
+    "this
+    "let maxc have least sig figs be the character position
+    let maxc = c
+    if cp > maxc
+        let maxc = cp
+    endif
+    if cb > maxc
+        let maxc = cb
+    endif
+    if cc > maxc
+        let maxc = cc
+    endif
+    "normalize pairs to single coord
+    let orig_norm = maxc * l + c
+    let p_norm = maxc * lp + cp
+    let b_norm = maxc * lb + cb
+    let c_norm = maxc * lc + cc
+
+    "find the min point
+    let cur_min = p_norm
+    if p_norm == orig_norm
+        let cur_min = b_norm
+        if b_norm == orig_norm
+            let cur_min = c_norm
+        endif
+    endif
+
+    if b_norm != orig_norm && b_norm < cur_min
+        let cur_min = b_norm
+    endif
+    if c_norm != orig_norm && c_norm < cur_min
+        let cur_min = c_norm
+    endif
+
+    if cur_min == p_norm
         " The innermost structure is a (...)
         return [')', lp, cp]
+    elseif cur_min == b_norm
+       " The innermost structure is a [...]
+       return [']', lb, cb]
     else
-        " The innermost structure is a [...]
-        return [']', lb, cb]
+        " The innermost structure is a {...}
+        return ['}', lc, cc]
     endif
 endfunction
 
@@ -1117,6 +1180,7 @@ function! PareditSplit()
 
         " First find which kind of paren is the innermost
         let [p, l, c] = s:FindClosing()
+        echoe 'closing is ' . p
         if p !~ s:any_closing_char
             " Not found any kind of parens
             return
@@ -1132,8 +1196,10 @@ function! PareditSplit()
 
         if p == ')'
             normal! i) (
-        else
+        elseif p == ']'
             normal! i] [
+        else
+            normal! i} {
         endif
     endif
 endfunction
@@ -1152,7 +1218,7 @@ function! PareditJoin()
     endif
     let line0 = getline( l0 )
     let line1 = getline( l1 )
-    if (line0[c0-1] == ')' && line1[c1-1] == '(') || (line0[c0-1] == ']' && line1[c1-1] == '[') || (line0[c0-1] == '"' && line1[c1-1] == '"')
+    if (line0[c0-1] == ')' && line1[c1-1] == '(') || (line0[c0-1] == ']' && line1[c1-1] == '[') || (line0[c0-1] == '"' && line1[c1-1] == '"') || (line0[c0-1] == '}' && line1[c1-1] == '{')
         if l0 == l1
             " First list ends on the same line where the second list begins
             let line0 = strpart( line0, 0, c0-1 ) . ' ' . strpart( line0, c1 )
