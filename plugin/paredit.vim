@@ -329,11 +329,13 @@ function! PareditIndentTopLevelForm( level )
     "let &expandtab = save_exp
 endfunction
 
-" Is this a Slimv REPL buffer?
+" Is this a Slimv or VimClojure REPL buffer?
 function! s:IsReplBuffer()
     if exists( 'g:slimv_repl_dir' ) && exists( 'g:slimv_repl_file' )
         let repl_name = g:slimv_repl_dir . g:slimv_repl_file
         return bufnr( repl_name ) == bufnr( '%' )
+    elseif exists( 'b:vimclojure_repl' )
+        return 1
     else
         return bufname( '%' ) =~ '.*\.repl\..*'
     endif
@@ -1240,10 +1242,16 @@ function! PareditSplice()
 endfunction
 
 
+function! PareditScanAndInitRepl()
+    if s:IsReplBuffer()
+        call PareditInitBuffer()
+    endif
+endfunction
+
 " =====================================================================
 "  Autocommands
 " =====================================================================
 
 au BufNewFile,BufRead *.lisp call PareditInitBuffer()
 au BufNewFile,BufRead *.clj  call PareditInitBuffer()
-
+au InsertEnter        *      call PareditScanAndInitRepl()
