@@ -110,7 +110,7 @@ function! PareditInitBuffer()
         nnoremap <buffer> <silent> <Del>        :<C-U>call PareditEraseFwd()<CR>
         nnoremap <buffer> <silent> X            :<C-U>call PareditEraseBck()<CR>
         nnoremap <buffer> <silent> s            :<C-U>call PareditEraseFwd()<CR>i
-        nnoremap <buffer> <silent> J            v$:<C-U>call PareditDelete(visualmode(),1)<CR>
+        "nnoremap <buffer> <silent> J            v$:<C-U>call PareditDelete(visualmode(),1)<CR>
         nnoremap <buffer> <silent> C            v$:<C-U>call PareditChange(visualmode(),1)<CR>
         nnoremap <buffer> <silent> j            :<C-U>call PareditSetDelete(v:count)<CR>g@
         vnoremap <buffer> <silent> j            :<C-U>call PareditDelete(visualmode(),1)<CR>
@@ -179,7 +179,7 @@ function! PareditInitBuffer()
         silent! unmap  <buffer> <Del>
         silent! unmap  <buffer> X
         silent! unmap  <buffer> s
-        silent! unmap  <buffer> J
+        "silent! unmap  <buffer> J
         silent! unmap  <buffer> C
         silent! unmap  <buffer> j
         silent! unmap  <buffer> c
