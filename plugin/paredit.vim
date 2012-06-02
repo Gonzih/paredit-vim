@@ -110,15 +110,15 @@ function! PareditInitBuffer()
         nnoremap <buffer> <silent> <Del>        :<C-U>call PareditEraseFwd()<CR>
         nnoremap <buffer> <silent> X            :<C-U>call PareditEraseBck()<CR>
         nnoremap <buffer> <silent> s            :<C-U>call PareditEraseFwd()<CR>i
-        nnoremap <buffer> <silent> D            v$:<C-U>call PareditDelete(visualmode(),1)<CR>
+        nnoremap <buffer> <silent> J            v$:<C-U>call PareditDelete(visualmode(),1)<CR>
         nnoremap <buffer> <silent> C            v$:<C-U>call PareditChange(visualmode(),1)<CR>
-        nnoremap <buffer> <silent> d            :<C-U>call PareditSetDelete(v:count)<CR>g@
-        vnoremap <buffer> <silent> d            :<C-U>call PareditDelete(visualmode(),1)<CR>
+        nnoremap <buffer> <silent> j            :<C-U>call PareditSetDelete(v:count)<CR>g@
+        vnoremap <buffer> <silent> j            :<C-U>call PareditDelete(visualmode(),1)<CR>
         vnoremap <buffer> <silent> x            :<C-U>call PareditDelete(visualmode(),1)<CR>
         vnoremap <buffer> <silent> <Del>        :<C-U>call PareditDelete(visualmode(),1)<CR>
         nnoremap <buffer> <silent> c            :set opfunc=PareditChange<CR>g@
         vnoremap <buffer> <silent> c            :<C-U>call PareditChange(visualmode(),1)<CR>
-        nnoremap <buffer> <silent> dd           :<C-U>call PareditDeleteLines()<CR>
+        nnoremap <buffer> <silent> jj           :<C-U>call PareditDeleteLines()<CR>
         nnoremap <buffer> <silent> cc           :<C-U>call PareditChangeLines()<CR>
         nnoremap <buffer> <silent> p            :<C-U>call PareditPut('p')<CR>
         nnoremap <buffer> <silent> P            :<C-U>call PareditPut('P')<CR>
@@ -179,11 +179,11 @@ function! PareditInitBuffer()
         silent! unmap  <buffer> <Del>
         silent! unmap  <buffer> X
         silent! unmap  <buffer> s
-        silent! unmap  <buffer> D
+        silent! unmap  <buffer> J
         silent! unmap  <buffer> C
-        silent! unmap  <buffer> d
+        silent! unmap  <buffer> j
         silent! unmap  <buffer> c
-        silent! unmap  <buffer> dd
+        silent! unmap  <buffer> jj
         silent! unmap  <buffer> cc
         if &ft == 'clojure'
             silent! iunmap <buffer> [
